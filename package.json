@@ -1,0 +1,38 @@
+{
+  "name": "superlink-community",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SuperLink Community — Smart Living. Safer Communities. One Connected Platform.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c teal,magenta \"npm run dev -w @superlink/api\" \"npm run dev -w @superlink/web\"",
+    "build": "npm run build -w @superlink/shared && npm run build -w @superlink/api && npm run build -w @superlink/web",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck -w @superlink/shared && npm run typecheck -w @superlink/api && npm run typecheck -w @superlink/web",
+    "test": "npm run test -w @superlink/api",
+    "db:migrate": "npm run db:migrate -w @superlink/api",
+    "db:seed": "npm run db:seed -w @superlink/api",
+    "db:reset": "npm run db:reset -w @superlink/api",
+    "postinstall": "npm run build -w @superlink/shared"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "concurrently": "^10.0.6",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.71.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

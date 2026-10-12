@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="SuperLink Community">
+  <rect width="512" height="512" rx="96" fill="#0B1F3A" />
+  <path d="M256 96 128 192v192a32 32 0 0 0 32 32h64V288h64v128h64a32 32 0 0 0 32-32V192Z" fill="#6366F1" />
+  <path d="M256 96 128 192v40l128-96 128 96v-40Z" fill="#14B8A6" />
+  <circle cx="256" cy="360" r="20" fill="#F7F8FB" />
+</svg>

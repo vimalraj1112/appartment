@@ -1,0 +1,1385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum UserRole {
+  SUPER_ADMIN
+  COMMUNITY_ADMIN
+  SECURITY
+  RESIDENT
+  STAFF
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  DISABLED
+}
+
+enum CommunityStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  PAST_DUE
+  CANCELLED
+}
+
+enum FlatStatus {
+  OCCUPIED
+  VACANT
+  BLOCKED
+}
+
+enum OccupantRelation {
+  OWNER
+  TENANT
+}
+
+enum NotificationType {
+  GENERAL
+  VISITOR
+  COMPLAINT
+  BILLING
+  ANNOUNCEMENT
+  EMERGENCY
+  SYSTEM
+}
+
+enum VisitorPassType {
+  SINGLE_USE
+  TIME_WINDOW
+}
+
+enum VisitorPassStatus {
+  PENDING
+  ACTIVE
+  USED
+  EXPIRED
+  CANCELLED
+}
+
+enum VisitorEntryDirection {
+  IN
+  OUT
+}
+
+enum VisitorEntryMethod {
+  QR
+  WALK_IN
+  MANUAL
+}
+
+enum DeliveryStatus {
+  EXPECTED
+  ARRIVED
+  DELIVERED
+  COLLECTED
+  CANCELLED
+}
+
+enum WatchlistType {
+  PERSON
+  VEHICLE
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum ComplaintStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum StaffAvailability {
+  AVAILABLE
+  BUSY
+  OFF
+}
+
+enum DomesticStaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BillStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  MOCK
+  RAZORPAY
+  CASH
+  BANK_TRANSFER
+  UPI
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  WAITLISTED
+}
+
+enum VehicleType {
+  CAR
+  BIKE
+  EV
+  BICYCLE
+}
+
+enum ParkingSlotStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  MAINTENANCE
+}
+
+enum AnnouncementType {
+  GENERAL
+  URGENT
+  MAINTENANCE
+  EVENT
+  EMERGENCY
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PostStatus {
+  VISIBLE
+  HIDDEN
+  REMOVED
+}
+
+enum PostReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum EmergencyCategory {
+  MEDICAL
+  FIRE
+  SECURITY
+  ELECTRICAL
+  WATER
+  OTHER
+}
+
+enum EmergencyAlertStatus {
+  TRIGGERED
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+// ---------- Core ----------
+
+model Community {
+  id        String          @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String          @unique
+  address   String?
+  city      String?
+  state     String?
+  timezone  String          @default("Asia/Kolkata")
+  status    CommunityStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+
+  settings     CommunitySetting?
+  users        User[]
+  subscription Subscription?
+
+  buildings         Building[]
+  floors            Floor[]
+  flats             Flat[]
+  flatOccupants     FlatOccupant[]
+  familyMembers     FamilyMember[]
+  residentDocuments ResidentDocument[]
+  invitations       Invitation[]
+  notifications     Notification[]
+
+  visitors         Visitor[]
+  visitorPasses    VisitorPass[]
+  visitorEntries   VisitorEntry[]
+  deliveries       Delivery[]
+  deliveryEntries  DeliveryEntry[]
+  watchlistEntries WatchlistEntry[]
+
+  complaintCategories ComplaintCategory[]
+  complaints          Complaint[]
+  complaintComments   ComplaintComment[]
+  staffProfiles       StaffProfile[]
+  staffAssignments    StaffAssignment[]
+  staffEntries        StaffEntry[]
+  domesticStaff       DomesticStaff[]
+
+  maintenanceConfigs MaintenanceConfig[]
+  maintenanceBills   MaintenanceBill[]
+  billItems          MaintenanceBillItem[]
+  payments           Payment[]
+  paymentReceipts    PaymentReceipt[]
+  expenseCategories  ExpenseCategory[]
+  expenses           Expense[]
+
+  amenities          Amenity[]
+  amenityBookings    AmenityBooking[]
+  vehicles           Vehicle[]
+  parkingSlots       ParkingSlot[]
+  parkingAssignments ParkingAssignment[]
+  parkingVisitors    ParkingVisitor[]
+
+  announcements      Announcement[]
+  announcementAcks   AnnouncementAck[]
+  communityPosts     CommunityPost[]
+  communityComments  CommunityComment[]
+  communityReactions CommunityReaction[]
+  postReports        PostReport[]
+  emergencyAlerts    EmergencyAlert[]
+
+  aiToolCalls        AiToolCall[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CommunitySetting {
+  id            String   @id @default(uuid()) @db.Uuid
+  communityId   String   @unique @db.Uuid
+  logoUrl       String?
+  currency      String   @default("INR")
+  onboardingStep Int     @default(0)
+  lateFeeConfig Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                    String     @id @default(uuid()) @db.Uuid
+  communityId           String?    @db.Uuid
+  role                  UserRole
+  email                 String     @unique
+  phone                 String?
+  passwordHash          String
+  firstName             String
+  lastName              String
+  avatarUrl             String?
+  status                UserStatus @default(ACTIVE)
+  emailVerifiedAt       DateTime?
+  passwordResetHash     String?
+  passwordResetExpiresAt DateTime?
+  lastLoginAt           DateTime?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  deletedAt             DateTime?
+
+  community Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  flatOccupancies   FlatOccupant[]
+  residentDocuments ResidentDocument[]
+  invitationsSent   Invitation[]
+  notifications     Notification[]
+
+  authoredAnnouncements Announcement[]     @relation("AnnouncementAuthor")
+  announcementAcks      AnnouncementAck[]  @relation("AnnouncementAckUser")
+  communityPosts        CommunityPost[]    @relation("PostAuthor")
+  communityComments     CommunityComment[] @relation("CommentAuthor")
+  communityReactions    CommunityReaction[] @relation("ReactionUser")
+  postReports           PostReport[]       @relation("ReportReporter")
+
+  triggeredEmergencies  EmergencyAlert[] @relation("EmergencyTriggeredBy")
+  acknowledgedEmergencies EmergencyAlert[] @relation("EmergencyAcknowledgedBy")
+  resolvedEmergencies   EmergencyAlert[] @relation("EmergencyResolvedBy")
+
+  createdVisitors   Visitor[]        @relation("VisitorCreatedBy")
+  createdPasses     VisitorPass[]    @relation("PassCreatedBy")
+  approvedPasses    VisitorPass[]    @relation("PassApprovedBy")
+  visitorEntries    VisitorEntry[]   @relation("VisitorGuard")
+  createdDeliveries Delivery[]       @relation("DeliveryCreatedBy")
+  deliveryEntries   DeliveryEntry[]  @relation("DeliveryGuard")
+  watchlistEntries  WatchlistEntry[] @relation("WatchlistFlaggedBy")
+
+  raisedComplaints   Complaint[]       @relation("ComplaintRaisedBy")
+  assignedComplaints Complaint[]       @relation("ComplaintAssignedTo")
+  complaintComments  ComplaintComment[]
+  staffProfile       StaffProfile?
+  staffAssignmentsMade StaffAssignment[] @relation("StaffAssignmentBy")
+  staffAssignments   StaffAssignment[] @relation("StaffAssignmentStaff")
+  staffEntriesTaken  StaffEntry[]      @relation("StaffEntryStaff")
+  staffEntriesLogged StaffEntry[]      @relation("StaffEntryGuard")
+
+  paymentsMade    Payment[] @relation("PaymentPaidBy")
+  expensesCreated Expense[] @relation("ExpenseCreatedBy")
+
+  amenityBookings       AmenityBooking[] @relation("BookingUser")
+  vehicles              Vehicle[]        @relation("VehicleOwner")
+  parkingVisitorsLogged ParkingVisitor[] @relation("ParkingVisitorCreatedBy")
+
+  aiConversations       AiConversation[] @relation("AiConversationUser")
+  aiToolCalls           AiToolCall[]     @relation("AiToolCallUser")
+
+  @@index([communityId])
+  @@index([communityId, role])
+  @@index([createdAt])
+}
+
+model Session {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @db.Uuid
+  refreshTokenHash String   @unique
+  userAgent       String?
+  ip              String?
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String?  @db.Uuid
+  userId      String?  @db.Uuid
+  action      String
+  resource    String?
+  resourceId  String?
+  meta        Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([communityId, createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ---------- Platform / subscriptions ----------
+
+model SubscriptionPlan {
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique
+  name            String
+  priceMonthlyInr Int      @default(0)
+  flatLimit       Int      @default(0)
+  features        Json?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id            String             @id @default(uuid()) @db.Uuid
+  communityId   String             @unique @db.Uuid
+  planId        String             @db.Uuid
+  status        SubscriptionStatus @default(TRIAL)
+  periodStart   DateTime
+  periodEnd     DateTime
+  providerMeta  Json?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  community Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  plan      SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([status])
+}
+
+// ---------- Phase 2: community structure ----------
+
+model Building {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  name        String
+  towerCode   String?
+  floorsCount Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  floors    Floor[]
+
+  @@unique([communityId, name])
+  @@index([communityId])
+  @@index([communityId, createdAt])
+}
+
+model Floor {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  buildingId  String   @db.Uuid
+  label       String
+  number      Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  building  Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  flats     Flat[]
+
+  @@unique([buildingId, number])
+  @@index([communityId])
+  @@index([buildingId])
+}
+
+model Flat {
+  id          String     @id @default(uuid()) @db.Uuid
+  communityId String     @db.Uuid
+  floorId     String     @db.Uuid
+  code        String
+  type        String?
+  areaSqft    Int?
+  status      FlatStatus @default(VACANT)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  community     Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  floor         Floor          @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  occupants     FlatOccupant[]
+  familyMembers FamilyMember[]
+  visitors      Visitor[]
+  visitorPasses VisitorPass[]
+  deliveries    Delivery[]
+  complaints    Complaint[]
+  domesticStaff DomesticStaff[]
+  bills         MaintenanceBill[]
+
+  amenityBookings    AmenityBooking[]
+  vehicles           Vehicle[]
+  parkingAssignments ParkingAssignment[]
+  emergencyAlerts    EmergencyAlert[]
+
+  @@unique([communityId, code])
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([floorId])
+}
+
+model FlatOccupant {
+  id          String           @id @default(uuid()) @db.Uuid
+  communityId String           @db.Uuid
+  flatId      String           @db.Uuid
+  userId      String           @db.Uuid
+  relation    OccupantRelation
+  isPrimary   Boolean          @default(true)
+  movedInAt   DateTime?
+  movedOutAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat      Flat      @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([flatId])
+  @@index([userId])
+}
+
+model FamilyMember {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  flatId      String   @db.Uuid
+  name        String
+  relation    String
+  phone       String?
+  age         Int?
+  isStaff     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat      Flat      @relation(fields: [flatId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([flatId])
+}
+
+model ResidentDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  userId      String   @db.Uuid
+  flatId      String?  @db.Uuid
+  type        String
+  fileKey     String
+  mimeType    String?
+  sizeBytes   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([userId])
+}
+
+model Invitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  email       String?
+  phone       String?
+  role        UserRole
+  flatId      String?   @db.Uuid
+  invitedById String?   @db.Uuid
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  invitedBy User?     @relation(fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([email])
+  @@index([communityId, createdAt])
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  communityId String           @db.Uuid
+  userId      String           @db.Uuid
+  type        NotificationType @default(GENERAL)
+  title       String
+  body        String
+  data        Json?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([communityId, userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// ---------- Phase 4: visitors / security ----------
+
+model Visitor {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  flatId      String?   @db.Uuid
+  name        String
+  phone       String?
+  email       String?
+  purpose     String?
+  photoUrl    String?
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  community Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat      Flat?        @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  createdBy User?        @relation("VisitorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  passes    VisitorPass[]
+  entries   VisitorEntry[]
+
+  @@index([communityId])
+  @@index([communityId, flatId])
+  @@index([phone])
+}
+
+model VisitorPass {
+  id            String            @id @default(uuid()) @db.Uuid
+  communityId   String            @db.Uuid
+  visitorId     String            @db.Uuid
+  flatId        String            @db.Uuid
+  code          String
+  qrTokenHash   String            @unique
+  type          VisitorPassType   @default(SINGLE_USE)
+  status        VisitorPassStatus @default(PENDING)
+  validFrom     DateTime          @default(now())
+  validTo       DateTime?
+  usedCount     Int               @default(0)
+  maxUses       Int               @default(1)
+  notes         String?
+  createdById   String?           @db.Uuid
+  approvedById  String?           @db.Uuid
+  decidedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  community Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  visitor   Visitor        @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  flat      Flat           @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  createdBy User?          @relation("PassCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedBy User?         @relation("PassApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  entries   VisitorEntry[]
+
+  @@unique([communityId, code])
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([flatId])
+  @@index([communityId, createdAt])
+}
+
+model VisitorEntry {
+  id          String               @id @default(uuid()) @db.Uuid
+  communityId String               @db.Uuid
+  passId      String?              @db.Uuid
+  visitorId   String               @db.Uuid
+  direction   VisitorEntryDirection
+  method      VisitorEntryMethod
+  guardUserId String?              @db.Uuid
+  note        String?
+  createdAt   DateTime             @default(now())
+
+  community Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  pass      VisitorPass? @relation(fields: [passId], references: [id], onDelete: SetNull)
+  visitor   Visitor     @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  guard     User?       @relation("VisitorGuard", fields: [guardUserId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([communityId, createdAt])
+  @@index([passId])
+}
+
+model Delivery {
+  id          String         @id @default(uuid()) @db.Uuid
+  communityId String         @db.Uuid
+  flatId      String?        @db.Uuid
+  category    String
+  company     String?
+  personName  String?
+  phone       String?
+  status      DeliveryStatus @default(EXPECTED)
+  note        String?
+  createdById String?        @db.Uuid
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  community Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat      Flat?           @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  createdBy User?           @relation("DeliveryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  entries   DeliveryEntry[]
+
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([flatId])
+  @@index([communityId, createdAt])
+}
+
+model DeliveryEntry {
+  id          String         @id @default(uuid()) @db.Uuid
+  communityId String         @db.Uuid
+  deliveryId  String         @db.Uuid
+  status      DeliveryStatus
+  guardUserId String?        @db.Uuid
+  note        String?
+  createdAt   DateTime       @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  delivery  Delivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  guard     User?     @relation("DeliveryGuard", fields: [guardUserId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([deliveryId])
+}
+
+model WatchlistEntry {
+  id          String        @id @default(uuid()) @db.Uuid
+  communityId String        @db.Uuid
+  type        WatchlistType
+  name        String
+  value       String?
+  reason      String
+  flaggedById String?       @db.Uuid
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flaggedBy User?     @relation("WatchlistFlaggedBy", fields: [flaggedById], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([communityId, type])
+  @@index([value])
+  @@index([communityId, createdAt])
+}
+
+// ---------- Complaints / staff ----------
+
+model ComplaintCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  name        String
+  description String?
+  slaHours    Int?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community  Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  complaints Complaint[]
+
+  @@unique([communityId, name])
+  @@index([communityId])
+}
+
+model Complaint {
+  id           String            @id @default(uuid()) @db.Uuid
+  communityId  String            @db.Uuid
+  flatId       String?           @db.Uuid
+  raisedById   String            @db.Uuid
+  categoryId   String?           @db.Uuid
+  title        String
+  description  String
+  priority     ComplaintPriority @default(MEDIUM)
+  status       ComplaintStatus   @default(OPEN)
+  assignedToId String?           @db.Uuid
+  location     String?
+  rating       Int?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  community  Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat       Flat?              @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  raisedBy   User               @relation("ComplaintRaisedBy", fields: [raisedById], references: [id], onDelete: Cascade)
+  category   ComplaintCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  assignedTo User?              @relation("ComplaintAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  comments   ComplaintComment[]
+  assignments StaffAssignment[]
+
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([communityId, assignedToId])
+  @@index([flatId])
+  @@index([communityId, createdAt])
+}
+
+model ComplaintComment {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  complaintId String   @db.Uuid
+  authorId    String   @db.Uuid
+  body        String
+  isInternal  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([complaintId])
+}
+
+model StaffProfile {
+  id           String            @id @default(uuid()) @db.Uuid
+  communityId  String            @db.Uuid
+  userId       String            @unique @db.Uuid
+  trade        String
+  availability StaffAvailability @default(AVAILABLE)
+  phone        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([communityId, trade])
+}
+
+model StaffAssignment {
+  id           String   @id @default(uuid()) @db.Uuid
+  communityId  String   @db.Uuid
+  complaintId  String   @db.Uuid
+  staffUserId  String   @db.Uuid
+  assignedById String?  @db.Uuid
+  note         String?
+  createdAt    DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  staff     User      @relation("StaffAssignmentStaff", fields: [staffUserId], references: [id], onDelete: Cascade)
+  assignedBy User?    @relation("StaffAssignmentBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([complaintId])
+  @@index([staffUserId])
+}
+
+model StaffEntry {
+  id          String                @id @default(uuid()) @db.Uuid
+  communityId String                @db.Uuid
+  staffUserId String                @db.Uuid
+  direction   VisitorEntryDirection
+  guardUserId String?               @db.Uuid
+  note        String?
+  createdAt   DateTime              @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  staff     User      @relation("StaffEntryStaff", fields: [staffUserId], references: [id], onDelete: Cascade)
+  guard     User?     @relation("StaffEntryGuard", fields: [guardUserId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([communityId, createdAt])
+  @@index([staffUserId])
+}
+
+model DomesticStaff {
+  id          String              @id @default(uuid()) @db.Uuid
+  communityId String              @db.Uuid
+  flatId      String              @db.Uuid
+  name        String
+  phone       String?
+  photoUrl    String?
+  idInfo      String?
+  workType    String
+  status      DomesticStaffStatus @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat      Flat      @relation(fields: [flatId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([flatId])
+  @@index([communityId, status])
+}
+
+// ---------- Phase 6: billing / payments ----------
+
+model MaintenanceConfig {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  flatType    String
+  baseInr     Int      @default(0)
+  waterInr    Int      @default(0)
+  parkingInr  Int      @default(0)
+  lateFeeInr  Int      @default(0)
+  graceDays   Int      @default(5)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, flatType])
+  @@index([communityId])
+}
+
+model MaintenanceBill {
+  id          String     @id @default(uuid()) @db.Uuid
+  communityId String     @db.Uuid
+  flatId      String     @db.Uuid
+  period      String
+  totalInr    Int
+  status      BillStatus @default(PENDING)
+  dueDate     DateTime
+  generatedAt DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  community Community            @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat      Flat                 @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  items     MaintenanceBillItem[]
+  payments  Payment[]
+
+  @@unique([flatId, period])
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([communityId, period])
+  @@index([flatId])
+}
+
+model MaintenanceBillItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  billId      String   @db.Uuid
+  label       String
+  amountInr   Int
+  createdAt   DateTime @default(now())
+
+  community Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  bill      MaintenanceBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([billId])
+}
+
+model Payment {
+  id             String          @id @default(uuid()) @db.Uuid
+  communityId    String          @db.Uuid
+  billId         String          @db.Uuid
+  amountInr      Int
+  provider       PaymentProvider @default(MOCK)
+  providerRef    String?
+  status         PaymentStatus   @default(PENDING)
+  idempotencyKey String
+  paidById       String?         @db.Uuid
+  note           String?
+  failureReason  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  community Community       @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  bill      MaintenanceBill @relation(fields: [billId], references: [id], onDelete: Cascade)
+  paidBy    User?           @relation("PaymentPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  receipt   PaymentReceipt?
+
+  @@unique([communityId, idempotencyKey])
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([billId])
+  @@index([communityId, createdAt])
+}
+
+model PaymentReceipt {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  paymentId   String   @unique @db.Uuid
+  receiptNo   String
+  fileKey     String?
+  issuedAt    DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  payment   Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, receiptNo])
+  @@index([communityId])
+}
+
+model ExpenseCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  name        String
+  createdAt   DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  expenses  Expense[]
+
+  @@unique([communityId, name])
+  @@index([communityId])
+}
+
+model Expense {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  categoryId  String?  @db.Uuid
+  title       String
+  amountInr   Int
+  vendor      String?
+  note        String?
+  spentAt     DateTime @default(now())
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  category  ExpenseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdBy User?            @relation("ExpenseCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([communityId, spentAt])
+  @@index([categoryId])
+}
+
+// ---------- Phase 7: amenities / parking / vehicles ----------
+
+model Amenity {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  name        String
+  icon        String?
+  description String?
+  slotMinutes Int      @default(60)
+  capacity    Int      @default(1)
+  openTime    String   @default("06:00")
+  closeTime   String   @default("22:00")
+  feeInr      Int      @default(0)
+  rules       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  community Community        @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  bookings  AmenityBooking[]
+
+  @@unique([communityId, name])
+  @@index([communityId])
+  @@index([communityId, isActive])
+}
+
+model AmenityBooking {
+  id               String        @id @default(uuid()) @db.Uuid
+  communityId      String        @db.Uuid
+  amenityId        String        @db.Uuid
+  flatId           String        @db.Uuid
+  userId           String        @db.Uuid
+  date             DateTime      @db.Date
+  slotStart        DateTime
+  slotEnd          DateTime
+  status           BookingStatus @default(BOOKED)
+  guests           Int           @default(0)
+  note             String?
+  waitlistPosition Int?
+  cancelledAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  amenity   Amenity   @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  flat      Flat      @relation(fields: [flatId], references: [id], onDelete: Cascade)
+  user      User      @relation("BookingUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([amenityId, date])
+  @@index([flatId])
+  @@index([communityId, createdAt])
+}
+
+model Vehicle {
+  id             String      @id @default(uuid()) @db.Uuid
+  communityId    String      @db.Uuid
+  userId         String      @db.Uuid
+  flatId         String?     @db.Uuid
+  regNumber      String
+  type           VehicleType @default(CAR)
+  brand          String?
+  model          String?
+  color          String?
+  isGuest        Boolean     @default(false)
+  guestExpiresAt DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                @relation("VehicleOwner", fields: [userId], references: [id], onDelete: Cascade)
+  flat        Flat?               @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  assignments ParkingAssignment[]
+
+  @@unique([communityId, regNumber])
+  @@index([communityId])
+  @@index([communityId, type])
+  @@index([userId])
+  @@index([flatId])
+}
+
+model ParkingSlot {
+  id          String            @id @default(uuid()) @db.Uuid
+  communityId String            @db.Uuid
+  code        String
+  zone        String?
+  status      ParkingSlotStatus @default(AVAILABLE)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  community   Community           @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  assignments ParkingAssignment[]
+  visitors    ParkingVisitor[]
+
+  @@unique([communityId, code])
+  @@index([communityId])
+  @@index([communityId, status])
+}
+
+model ParkingAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  slotId      String    @db.Uuid
+  flatId      String?   @db.Uuid
+  vehicleId   String?   @db.Uuid
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  community Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  slot      ParkingSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  flat      Flat?       @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  vehicle   Vehicle?    @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([slotId])
+  @@index([flatId])
+  @@index([communityId, createdAt])
+}
+
+model ParkingVisitor {
+  id          String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  slotId      String?   @db.Uuid
+  regNumber   String
+  name        String?
+  phone       String?
+  note        String?
+  validFrom   DateTime  @default(now())
+  validTo     DateTime?
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  community Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  slot      ParkingSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  createdBy User?        @relation("ParkingVisitorCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([communityId, createdAt])
+  @@index([regNumber])
+}
+
+model Announcement {
+  id          String             @id @default(uuid()) @db.Uuid
+  communityId String             @db.Uuid
+  authorId    String             @db.Uuid
+  type        AnnouncementType   @default(GENERAL)
+  title       String
+  body        String
+  status      AnnouncementStatus @default(PUBLISHED)
+  pinnedUntil DateTime?
+  publishAt   DateTime           @default(now())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  community Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author    User              @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  acks      AnnouncementAck[]
+
+  @@index([communityId])
+  @@index([communityId, status, publishAt])
+}
+
+model AnnouncementAck {
+  id             String   @id @default(uuid()) @db.Uuid
+  communityId    String   @db.Uuid
+  announcementId String   @db.Uuid
+  userId         String   @db.Uuid
+  createdAt      DateTime @default(now())
+
+  community    Community    @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation("AnnouncementAckUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([communityId])
+  @@index([userId])
+}
+
+model CommunityPost {
+  id            String     @id @default(uuid()) @db.Uuid
+  communityId   String     @db.Uuid
+  authorId      String     @db.Uuid
+  body          String
+  status        PostStatus @default(VISIBLE)
+  hiddenReason  String?
+  reportedCount Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  community Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author    User               @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  comments  CommunityComment[]
+  reactions CommunityReaction[]
+  reports   PostReport[]
+
+  @@index([communityId])
+  @@index([communityId, status, createdAt])
+  @@index([authorId])
+}
+
+model CommunityComment {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  postId      String   @db.Uuid
+  authorId    String   @db.Uuid
+  body        String
+  createdAt   DateTime @default(now())
+
+  community Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User          @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([postId])
+}
+
+model CommunityReaction {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String   @db.Uuid
+  postId      String   @db.Uuid
+  userId      String   @db.Uuid
+  emoji       String
+  createdAt   DateTime @default(now())
+
+  community Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User          @relation("ReactionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([communityId])
+}
+
+model PostReport {
+  id          String           @id @default(uuid()) @db.Uuid
+  communityId String           @db.Uuid
+  postId      String           @db.Uuid
+  reporterId  String           @db.Uuid
+  reason      String?
+  status      PostReportStatus @default(OPEN)
+  createdAt   DateTime         @default(now())
+
+  community Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter  User          @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reporterId])
+  @@index([communityId])
+  @@index([communityId, status])
+}
+
+model EmergencyAlert {
+  id               String               @id @default(uuid()) @db.Uuid
+  communityId      String               @db.Uuid
+  flatId           String?              @db.Uuid
+  userId           String               @db.Uuid
+  category         EmergencyCategory
+  status           EmergencyAlertStatus @default(TRIGGERED)
+  note             String?
+  acknowledgedById String?              @db.Uuid
+  acknowledgedAt   DateTime?
+  resolvedById     String?              @db.Uuid
+  resolvedAt       DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  community      Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  flat           Flat?     @relation(fields: [flatId], references: [id], onDelete: SetNull)
+  user           User      @relation("EmergencyTriggeredBy", fields: [userId], references: [id], onDelete: Cascade)
+  acknowledgedBy User?     @relation("EmergencyAcknowledgedBy", fields: [acknowledgedById], references: [id], onDelete: SetNull)
+  resolvedBy     User?     @relation("EmergencyResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([communityId])
+  @@index([communityId, status])
+  @@index([flatId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 11: AI assistant (tools-only)
+// ---------------------------------------------------------------------------
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model AiConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User        @relation("AiConversationUser", fields: [userId], references: [id], onDelete: Cascade)
+  messages AiMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AiMessage {
+  id             String        @id @default(uuid()) @db.Uuid
+  conversationId String        @db.Uuid
+  role           AiMessageRole
+  content        String
+  toolName       String?
+  toolArgs       Json?
+  toolResult     Json?
+  tokens         Int?
+  createdAt      DateTime      @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+model AiToolCall {
+  id          String   @id @default(uuid()) @db.Uuid
+  communityId String?  @db.Uuid
+  userId      String   @db.Uuid
+  tool        String
+  ok          Boolean  @default(true)
+  ms          Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  community Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User       @relation("AiToolCallUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+  @@index([userId, createdAt])
+}
+
+// ---------- Marketing (Phase 13) ----------
+
+enum DemoLeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  DISMISSED
+}
+
+model DemoLead {
+  id            String         @id @default(uuid()) @db.Uuid
+  name          String
+  email         String
+  phone         String
+  communityName String
+  flats         Int?
+  message       String?
+  status        DemoLeadStatus @default(NEW)
+  ip            String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, createdAt])
+}

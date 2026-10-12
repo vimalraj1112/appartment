@@ -1,0 +1,98 @@
+import type { Role } from "./enums.js";
+import { ROLES } from "./enums.js";
+
+/**
+ * Single source of truth for RBAC.
+ * Route guards (`requirePermission`) and the generated test matrix both read from here.
+ */
+export const CAPABILITIES = {
+  // Platform (Super Admin)
+  PLATFORM_MANAGE: ["SUPER_ADMIN"],
+  PLATFORM_ANALYTICS: ["SUPER_ADMIN"],
+  PLATFORM_COMMUNITY_MANAGE: ["SUPER_ADMIN"],
+  PLATFORM_PLAN_MANAGE: ["SUPER_ADMIN"],
+  PLATFORM_SUBSCRIPTION_MANAGE: ["SUPER_ADMIN"],
+  PLATFORM_AUDIT_VIEW: ["SUPER_ADMIN"],
+  PLATFORM_LEAD_MANAGE: ["SUPER_ADMIN"],
+
+  // Community Admin — full community management
+  STRUCTURE_MANAGE: ["COMMUNITY_ADMIN"],
+  RESIDENT_MANAGE: ["COMMUNITY_ADMIN"],
+  STAFF_MANAGE: ["COMMUNITY_ADMIN"],
+  REPORTS_VIEW: ["COMMUNITY_ADMIN"],
+  BILLING_CONFIGURE: ["COMMUNITY_ADMIN"],
+  FINANCE_VIEW: ["COMMUNITY_ADMIN"],
+  AMENITY_MANAGE: ["COMMUNITY_ADMIN"],
+  VENDOR_MANAGE: ["COMMUNITY_ADMIN"],
+  ANNOUNCEMENT_MANAGE: ["COMMUNITY_ADMIN"],
+  FEED_MODERATE: ["COMMUNITY_ADMIN"],
+
+  // Visitors
+  VISITOR_PASS_CREATE: ["COMMUNITY_ADMIN", "RESIDENT"],
+  VISITOR_APPROVE: ["COMMUNITY_ADMIN", "RESIDENT"],
+  VISITOR_VIEW: ["COMMUNITY_ADMIN", "SECURITY", "RESIDENT"],
+  DELIVERY_MANAGE: ["COMMUNITY_ADMIN", "SECURITY"],
+  WATCHLIST_MANAGE: ["COMMUNITY_ADMIN", "SECURITY"],
+
+  // Security gate operations (no finance, ever)
+  GATE_OPERATIONS: ["COMMUNITY_ADMIN", "SECURITY"],
+
+  // Emergency
+  EMERGENCY_VIEW: ["SUPER_ADMIN", "COMMUNITY_ADMIN", "SECURITY", "RESIDENT"],
+  EMERGENCY_TRIGGER: ["SUPER_ADMIN", "COMMUNITY_ADMIN", "SECURITY", "RESIDENT"],
+  EMERGENCY_MANAGE: ["COMMUNITY_ADMIN", "SECURITY"],
+
+  // Complaints
+  COMPLAINT_RAISE: ["COMMUNITY_ADMIN", "RESIDENT"],
+  COMPLAINT_MANAGE: ["COMMUNITY_ADMIN"],
+  COMPLAINT_WORK: ["COMMUNITY_ADMIN", "STAFF"],
+  COMPLAINT_VIEW: ["COMMUNITY_ADMIN", "RESIDENT", "STAFF"],
+  COMPLAINT_CATEGORY_MANAGE: ["COMMUNITY_ADMIN"],
+
+  // Staff
+  STAFF_ENTRY: ["COMMUNITY_ADMIN", "SECURITY"],
+  DOMESTIC_STAFF_MANAGE: ["COMMUNITY_ADMIN", "RESIDENT"],
+
+  // Money (resident own data only — always scoped to own flat in services)
+  BILL_VIEW_OWN: ["RESIDENT"],
+  BILL_PAY: ["RESIDENT"],
+
+  // Amenities / vehicles / parking
+  AMENITY_VIEW: ["COMMUNITY_ADMIN", "RESIDENT"],
+  BOOKING_CREATE: ["COMMUNITY_ADMIN", "RESIDENT"],
+  BOOKING_VIEW: ["COMMUNITY_ADMIN", "RESIDENT"],
+  BOOKING_MANAGE: ["COMMUNITY_ADMIN"],
+  VEHICLE_OWN: ["COMMUNITY_ADMIN", "RESIDENT"],
+  VEHICLE_SEARCH: ["COMMUNITY_ADMIN", "SECURITY"],
+  PARKING_MANAGE: ["COMMUNITY_ADMIN"],
+  PARKING_VIEW: ["COMMUNITY_ADMIN", "SECURITY", "RESIDENT"],
+  PARKING_VISITOR_MANAGE: ["COMMUNITY_ADMIN", "SECURITY"],
+
+  // Communication
+  ANNOUNCEMENT_READ: ["SUPER_ADMIN", "COMMUNITY_ADMIN", "SECURITY", "RESIDENT", "STAFF"],
+  FEED_WRITE: ["COMMUNITY_ADMIN", "RESIDENT"],
+
+  // Dashboard + notifications (self-scoped)
+  DASHBOARD_VIEW: ["SUPER_ADMIN", "COMMUNITY_ADMIN", "SECURITY", "RESIDENT", "STAFF"],
+  NOTIFICATION_VIEW: ["SUPER_ADMIN", "COMMUNITY_ADMIN", "SECURITY", "RESIDENT", "STAFF"],
+  NOTIFICATION_SEND: ["SUPER_ADMIN", "COMMUNITY_ADMIN"],
+
+  // AI assistant tiers
+  AI_COMMUNITY: ["SUPER_ADMIN", "COMMUNITY_ADMIN"],
+  AI_OWN: ["RESIDENT"],
+  AI_HELP: ["SECURITY", "STAFF"],
+} as const satisfies Record<string, readonly Role[]>;
+
+export type Capability = keyof typeof CAPABILITIES;
+
+export function can(role: Role, capability: Capability): boolean {
+  const allowed = CAPABILITIES[capability] as readonly Role[];
+  return allowed.includes(role);
+}
+
+export function capabilitiesForRole(role: Role): Capability[] {
+  return (Object.keys(CAPABILITIES) as Capability[]).filter((cap) => can(role, cap));
+}
+
+export { ROLES };
+export type { Role };

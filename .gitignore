@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# prisma generated
+apps/api/src/generated/
+
+# logs / os
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/
+
+# vite
+apps/web/.vite/
+
+# test/debug output
+*-out.txt
+vitest-out.txt
